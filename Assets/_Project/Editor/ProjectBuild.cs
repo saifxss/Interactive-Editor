@@ -37,6 +37,7 @@ public static class ProjectBuild
         AssetDatabase.SaveAssets();
     }
 
+    [MenuItem("Adeeb/Build WebGL")]
     public static void Web()
     {
         Prepare();

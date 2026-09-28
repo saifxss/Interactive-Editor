@@ -2,8 +2,6 @@ using System;
 using System.Threading;
 using Adeeb.Firebase;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 
 namespace Adeeb.EditorApp
 {
@@ -14,14 +12,13 @@ namespace Adeeb.EditorApp
         EditorController controller;
         EditorView view;
         bool loadingAssets;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        static void Install() { if (FindFirstObjectByType<EditorBootstrap>() == null) DontDestroyOnLoad(new GameObject("EditorBootstrap", typeof(EditorBootstrap))); }
         void Start()
         {
-            if (EventSystem.current == null) { var input = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule)); input.transform.SetParent(transform); }
             var config = new FirebaseConfig(); var auth = new FirebaseAuthService(config, new PlayerPrefsSessionStore());
             controller = new EditorController(new FirebaseProjectRepository(auth, new FirebaseRestClient(config, auth)));
-            assets = new RemoteAssetService(); view = gameObject.AddComponent<EditorView>(); view.Build(assets);
+            assets = new RemoteAssetService(); view = GetComponent<EditorView>();
+            if (view == null) { Debug.LogError("EditorView is missing from the scene."); return; }
+            view.BindScene(assets);
             controller.Changed += () => view.Render(controller);
             controller.Status += view.ShowStatus;
             controller.MenuLoaded += view.ShowMenu;
@@ -46,7 +43,7 @@ namespace Adeeb.EditorApp
         {
             if (loadingAssets || controller.Busy) return;
             loadingAssets = true;
-            try { if (assets.Catalog == null) await assets.LoadAsync(lifetime.Token); await controller.MenuAsync(); }
+            try { if (assets.Catalog == null) await assets.LoadAsync(lifetime.Token); view.BindPalette(); await controller.MenuAsync(); }
             catch (OperationCanceledException) { }
             catch (Exception) { view.ShowStatus("Could not load the asset catalog. Check the connection and press Retry."); }
             finally { loadingAssets = false; }
